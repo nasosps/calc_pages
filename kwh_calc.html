@@ -1,0 +1,348 @@
+<!doctype html>
+<html lang="el">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Υπολογιστής Ρεύματος (kWh → Πληρωμή)</title>
+  <style>
+    :root { --bg:#0b1020; --card:#111a33; --txt:#e8ecff; --muted:#aab3d6; --line:#22305a; --ok:#29d391; }
+    body{ margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial; background:linear-gradient(180deg,#060914,#0b1020); color:var(--txt); }
+    .wrap{ max-width:980px; margin:24px auto; padding:0 14px; }
+    .card{ background:rgba(17,26,51,.85); border:1px solid var(--line); border-radius:14px; padding:16px; box-shadow:0 10px 28px rgba(0,0,0,.35); }
+    h1{ margin:0 0 6px; font-size:18px; font-weight:700; }
+    .sub{ color:var(--muted); font-size:13px; margin:0 0 14px; }
+    .grid{ display:grid; grid-template-columns:repeat(12,1fr); gap:12px; }
+    .row{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+    label{ display:block; font-size:12px; color:var(--muted); margin:0 0 6px; }
+    input,select{ width:100%; padding:10px 10px; border-radius:10px; border:1px solid var(--line); background:#0b1430; color:var(--txt); font-size:14px; }
+    .col-3{ grid-column:span 3; } .col-4{ grid-column:span 4; } .col-6{ grid-column:span 6; } .col-12{ grid-column:span 12; }
+    .btn{ cursor:pointer; border:1px solid var(--line); background:#0f1a3a; color:var(--txt); padding:10px 12px; border-radius:10px; font-weight:600; }
+    .btn:hover{ filter:brightness(1.08); }
+    .pill{ display:inline-block; padding:6px 10px; border-radius:999px; border:1px solid var(--line); color:var(--muted); font-size:12px; }
+    .out{ background:#0b1430; border:1px solid var(--line); border-radius:12px; padding:12px; }
+    .kpi{ display:flex; gap:12px; flex-wrap:wrap; }
+    .kpi > div{ flex:1 1 220px; background:#0a122a; border:1px solid var(--line); border-radius:12px; padding:12px; }
+    .kpi .v{ font-size:20px; font-weight:800; margin-top:4px; }
+    .ok{ color:var(--ok); }
+    details{ border:1px dashed var(--line); border-radius:12px; padding:10px 12px; background:rgba(10,18,42,.55); }
+    summary{ cursor:pointer; color:var(--txt); font-weight:700; }
+    .note{ font-size:12px; color:var(--muted); margin-top:8px; line-height:1.4; }
+    @media (max-width:900px){
+      .col-3,.col-4,.col-6{ grid-column:span 12; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h1>Υπολογιστής Ρεύματος (βάζεις kWh → βγάζει ποσό)</h1>
+      <p class="sub">
+        Έχει 2 λειτουργίες: <span class="pill">Quick (all-in €/kWh)</span> και <span class="pill">Αναλυτικό (όπως εκκαθαριστικός)</span>.
+      </p>
+
+      <div class="grid">
+        <div class="col-4">
+          <label>Λειτουργία</label>
+          <select id="mode">
+            <option value="quick">Quick (kWh × all-in €/kWh)</option>
+            <option value="bill">Αναλυτικό (προμήθεια + ρυθμιζόμενες + ΦΠΑ)</option>
+          </select>
+        </div>
+
+        <div class="col-4">
+          <label>kWh (κατανάλωση)</label>
+          <input id="kwh" type="number" min="0" step="1" value="643" />
+        </div>
+
+        <div class="col-4">
+          <label>Ημέρες (default 30)</label>
+          <input id="days" type="number" min="1" step="1" value="30" />
+        </div>
+
+        <div class="col-4" id="quickPriceWrap">
+          <label>All-in τιμή €/kWh (Quick)</label>
+          <input id="allIn" type="number" min="0" step="0.001" value="0.256" />
+        </div>
+
+        <div class="col-12">
+          <div class="row">
+            <button class="btn" id="calcBtn">Υπολογισμός</button>
+            <button class="btn" id="resetBtn" title="Επαναφορά προεπιλογών">Reset</button>
+          </div>
+        </div>
+
+        <div class="col-12 out">
+          <div class="kpi">
+            <div>
+              <div class="pill">Τελικό ποσό</div>
+              <div class="v" id="total">—</div>
+            </div>
+            <div>
+              <div class="pill">Effective “όλα μέσα” €/kWh</div>
+              <div class="v" id="eff">—</div>
+            </div>
+            <div>
+              <div class="pill">kWh/ημέρα</div>
+              <div class="v" id="kwhPerDay">—</div>
+            </div>
+          </div>
+          <div class="note" id="breakdownNote"></div>
+        </div>
+
+        <div class="col-12" id="billDetailsWrap" style="display:none;">
+          <details open>
+            <summary>Ρυθμίσεις Αναλυτικού (βάσει του δικού σου εκκαθαριστικού)</summary>
+
+            <div class="grid" style="margin-top:10px;">
+              <div class="col-4">
+                <label>Πάγιο Προμήθειας €/30ημ</label>
+                <input id="supplyFixed30" type="number" step="0.01" value="5.00" />
+              </div>
+
+              <div class="col-4">
+                <label>Όριο 1ης κλίμακας (kWh / 30ημ)</label>
+                <input id="tier1Limit30" type="number" step="1" value="300" />
+              </div>
+
+              <div class="col-4">
+                <label>Τιμή ενέργειας 1ης κλίμακας €/kWh</label>
+                <input id="tier1Price" type="number" step="0.00001" value="0.15308" />
+              </div>
+
+              <div class="col-4">
+                <label>Τιμή ενέργειας 2ης κλίμακας €/kWh</label>
+                <input id="tier2Price" type="number" step="0.00001" value="0.15926" />
+              </div>
+
+              <div class="col-4">
+                <label>Συμφωνημένη ισχύς (kVA)</label>
+                <input id="kva" type="number" step="1" value="8" />
+              </div>
+
+              <div class="col-4">
+                <label>ΦΠΑ Ρεύματος</label>
+                <input id="vatRate" type="number" step="0.01" value="0.06" />
+              </div>
+
+              <div class="col-4">
+                <label>ΑΔΜΗΕ €/kWh</label>
+                <input id="admie" type="number" step="0.00001" value="0.00999" />
+              </div>
+
+              <div class="col-4">
+                <label>ΔΕΔΔΗΕ €/kWh</label>
+                <input id="deddieVar" type="number" step="0.00001" value="0.00339" />
+              </div>
+
+              <div class="col-4">
+                <label>ΔΕΔΔΗΕ €/kVA/έτος (fixed)</label>
+                <input id="deddieFixedPerYear" type="number" step="0.001" value="6.210" />
+              </div>
+
+              <div class="col-4">
+                <label>ΥΚΩ Τ1 €/kWh (0–1600/4μηνο)</label>
+                <input id="yko1" type="number" step="0.00001" value="0.00690" />
+              </div>
+
+              <div class="col-4">
+                <label>ΥΚΩ Τ2 €/kWh (1601–2000/4μηνο)</label>
+                <input id="yko2" type="number" step="0.00001" value="0.05000" />
+              </div>
+
+              <div class="col-4">
+                <label>ΥΚΩ Τ3 €/kWh (2001+ /4μηνο)</label>
+                <input id="yko3" type="number" step="0.00001" value="0.08500" />
+              </div>
+
+              <div class="col-4">
+                <label>ΕΤΜΕΑΡ €/kWh</label>
+                <input id="etmear" type="number" step="0.00001" value="0.01700" />
+              </div>
+
+              <div class="col-4">
+                <label>ΕΦΚ €/kWh (default από δικό σου bill)</label>
+                <input id="efk" type="number" step="0.00001" value="0.00220870" />
+              </div>
+
+              <div class="col-4">
+                <label>Ειδ.Τέλος €/kWh (default από δικό σου bill)</label>
+                <input id="eidtel" type="number" step="0.00001" value="0.00104348" />
+              </div>
+
+              <div class="col-6">
+                <label>Δήμος + ΕΡΤ (προαιρετικό, €)</label>
+                <input id="municipal" type="number" step="0.01" value="0.00" />
+              </div>
+
+              <div class="col-6">
+                <label>Στρογγυλοποιήσεις/λοιπά (προαιρετικό, €)</label>
+                <input id="misc" type="number" step="0.01" value="0.00" />
+              </div>
+            </div>
+
+            <div class="note">
+              Σημείωση: Οι τιμές προεπιλογής είναι από τον εκκαθαριστικό σου (π.χ. ΑΔΜΗΕ 0,00999 €/kWh, ΔΕΔΔΗΕ 0,00339 €/kWh, ΥΚΩ κλιμακωτά, ΕΤΜΕΑΡ 0,01700 €/kWh, ΦΠΑ 6%).<br/>
+              Αν αλλάξει τιμοκατάλογος/μήνας, αλλάζεις μόνο τις τιμές εδώ.
+            </div>
+          </details>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+(function(){
+  const $ = (id)=>document.getElementById(id);
+
+  function eur(x){
+    const v = Math.round((x + Number.EPSILON) * 100) / 100;
+    return v.toLocaleString("el-GR", { style:"currency", currency:"EUR" });
+  }
+  function num(x){ return Number(String(x).replace(",", ".")) || 0; }
+
+  function calcQuick(kwh, days, allIn){
+    const total = kwh * allIn;
+    return {
+      total,
+      eff: kwh > 0 ? total / kwh : 0,
+      note: `Quick: ${kwh} kWh × ${allIn.toFixed(3)} €/kWh = ${eur(total)}`
+    };
+  }
+
+  // Αναλυτικό (με βάση δομή εκκαθαριστικού)
+  function calcBill(kwh, days){
+    const supplyFixed30 = num($("supplyFixed30").value);
+    const tier1Limit30  = num($("tier1Limit30").value);
+    const tier1Price    = num($("tier1Price").value);
+    const tier2Price    = num($("tier2Price").value);
+
+    const kva = num($("kva").value);
+    const vatRate = num($("vatRate").value);
+
+    const admie = num($("admie").value);
+    const deddieVar = num($("deddieVar").value);
+    const deddieFixedPerYear = num($("deddieFixedPerYear").value);
+
+    const yko1 = num($("yko1").value);
+    const yko2 = num($("yko2").value);
+    const yko3 = num($("yko3").value);
+
+    const etmear = num($("etmear").value);
+    const efk = num($("efk").value);
+    const eidtel = num($("eidtel").value);
+
+    const municipal = num($("municipal").value);
+    const misc = num($("misc").value);
+
+    // Προμήθεια
+    const supplyFixed = supplyFixed30 * (days/30);
+    const tier1Limit = tier1Limit30 * (days/30);
+    const kwh1 = Math.min(kwh, tier1Limit);
+    const kwh2 = Math.max(0, kwh - kwh1);
+    const energyCharge = (kwh1 * tier1Price) + (kwh2 * tier2Price);
+    const supplyTotal = supplyFixed + energyCharge;
+
+    // Ρυθμιζόμενες
+    const admieCharge = kwh * admie;
+
+    const deddieFixed = kva * (days/365) * deddieFixedPerYear;
+    const deddieCharge = deddieFixed + (kwh * deddieVar);
+
+    // ΥΚΩ: κλίμακες ανά “4μηνο”, τις αναγάγουμε σε days με βάση 120 ημέρες/4μηνο
+    const t1 = 1600 * (days/120);
+    const t2 = 400  * (days/120);
+
+    const y1k = Math.min(kwh, t1);
+    const y2k = Math.min(Math.max(0, kwh - y1k), t2);
+    const y3k = Math.max(0, kwh - y1k - y2k);
+    const ykoCharge = (y1k*yko1) + (y2k*yko2) + (y3k*yko3);
+
+    const etmearCharge = kwh * etmear;
+
+    const regulatedTotal = admieCharge + deddieCharge + ykoCharge + etmearCharge;
+
+    // Φόροι/λοιπά (όπως στο bill: ΕΦΚ + Ειδ.Τέλος) ανά kWh
+    const taxes = kwh * (efk + eidtel);
+
+    // Βάση ΦΠΑ (χωρίς Δήμο/ΕΡΤ)
+    const vatBase = supplyTotal + regulatedTotal + taxes + misc;
+    const vat = vatBase * vatRate;
+
+    const total = vatBase + vat + municipal;
+    const eff = kwh > 0 ? total / kwh : 0;
+
+    const note =
+      `Αναλυτικό: Προμήθεια=${eur(supplyTotal)} (Πάγιο ${eur(supplyFixed)} + Ενέργεια ${eur(energyCharge)}), ` +
+      `Ρυθμιζόμενες=${eur(regulatedTotal)}, Φόροι=${eur(taxes)}, ΦΠΑ=${eur(vat)} ` +
+      (municipal>0 ? `, Δήμος/ΕΡΤ=${eur(municipal)}` : "") +
+      (misc!==0 ? `, Λοιπά=${eur(misc)}` : "");
+
+    return { total, eff, note };
+  }
+
+  function render(){
+    const mode = $("mode").value;
+    const kwh = num($("kwh").value);
+    const days = Math.max(1, Math.round(num($("days").value)));
+
+    const kwhPerDay = kwh / days;
+
+    let res;
+    if(mode === "quick"){
+      const allIn = num($("allIn").value);
+      res = calcQuick(kwh, days, allIn);
+    } else {
+      res = calcBill(kwh, days);
+    }
+
+    $("total").textContent = eur(res.total);
+    $("eff").textContent = (res.eff || 0).toFixed(3) + " €/kWh";
+    $("kwhPerDay").textContent = kwhPerDay.toFixed(2);
+    $("breakdownNote").textContent = res.note;
+  }
+
+  function toggleModeUI(){
+    const mode = $("mode").value;
+    $("quickPriceWrap").style.display = (mode === "quick") ? "" : "none";
+    $("billDetailsWrap").style.display = (mode === "bill") ? "" : "none";
+  }
+
+  $("mode").addEventListener("change", ()=>{ toggleModeUI(); render(); });
+  $("calcBtn").addEventListener("click", render);
+
+  $("resetBtn").addEventListener("click", ()=>{
+    $("mode").value = "quick";
+    $("kwh").value = "643";
+    $("days").value = "30";
+    $("allIn").value = "0.256";
+
+    // defaults (bill-based)
+    $("supplyFixed30").value = "5.00";
+    $("tier1Limit30").value  = "300";
+    $("tier1Price").value    = "0.15308";
+    $("tier2Price").value    = "0.15926";
+    $("kva").value = "8";
+    $("vatRate").value = "0.06";
+    $("admie").value = "0.00999";
+    $("deddieVar").value = "0.00339";
+    $("deddieFixedPerYear").value = "6.210";
+    $("yko1").value = "0.00690";
+    $("yko2").value = "0.05000";
+    $("yko3").value = "0.08500";
+    $("etmear").value = "0.01700";
+    $("efk").value = "0.00220870";
+    $("eidtel").value = "0.00104348";
+    $("municipal").value = "0.00";
+    $("misc").value = "0.00";
+
+    toggleModeUI();
+    render();
+  });
+
+  // initial
+  toggleModeUI();
+  render();
+})();
+</script>
+</body>
+</html>
