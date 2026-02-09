@@ -1,0 +1,15 @@
+{
+    "name": "KWh Calculator",
+    "short_name": "KWh Calc",
+    "start_url": "kwh_calc.html",
+    "display": "standalone",
+    "background_color": "#ffffff",
+    "theme_color": "#fbbf24",
+    "icons": [
+        {
+            "src": "icons/icon.svg",
+            "sizes": "192x192 512x512",
+            "type": "image/svg+xml"
+        }
+    ]
+}

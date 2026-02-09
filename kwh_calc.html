@@ -1,42 +1,209 @@
 <!doctype html>
 <html lang="el">
+
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Υπολογιστής Ρεύματος (kWh → Τελικό Ποσό)</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#fbbf24">
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./service-worker.js')
+          .then(registration => console.log('SW registered'))
+          .catch(err => console.log('SW registration failed: ', err));
+      });
+    }
+  </script>
   <style>
-    :root { --bg:#0b1020; --card:#111a33; --txt:#e8ecff; --muted:#aab3d6; --line:#22305a; --ok:#29d391; }
-    body{ margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial; background:linear-gradient(180deg,#060914,#0b1020); color:var(--txt); }
-    .wrap{ max-width:1100px; margin:24px auto; padding:0 14px; }
-    .card{ background:rgba(17,26,51,.88); border:1px solid var(--line); border-radius:14px; padding:16px; box-shadow:0 10px 28px rgba(0,0,0,.35); }
-    h1{ margin:0 0 6px; font-size:18px; font-weight:800; }
-    .sub{ color:var(--muted); font-size:13px; margin:0 0 14px; line-height:1.4; }
-    .grid{ display:grid; grid-template-columns:repeat(12,1fr); gap:12px; }
-    label{ display:block; font-size:12px; color:var(--muted); margin:0 0 6px; }
-    input,select{ width:100%; padding:10px 10px; border-radius:10px; border:1px solid var(--line); background:#0b1430; color:var(--txt); font-size:14px; }
-    .col-3{ grid-column:span 3; } .col-4{ grid-column:span 4; } .col-6{ grid-column:span 6; } .col-12{ grid-column:span 12; }
-    .btn{ cursor:pointer; border:1px solid var(--line); background:#0f1a3a; color:var(--txt); padding:10px 12px; border-radius:10px; font-weight:700; }
-    .btn:hover{ filter:brightness(1.08); }
-    .pill{ display:inline-block; padding:6px 10px; border-radius:999px; border:1px solid var(--line); color:var(--muted); font-size:12px; }
-    .out{ background:#0b1430; border:1px solid var(--line); border-radius:12px; padding:12px; }
-    .kpi{ display:flex; gap:12px; flex-wrap:wrap; }
-    .kpi > div{ flex:1 1 240px; background:#0a122a; border:1px solid var(--line); border-radius:12px; padding:12px; }
-    .kpi .v{ font-size:20px; font-weight:900; margin-top:4px; }
-    .ok{ color:var(--ok); }
-    details{ border:1px dashed var(--line); border-radius:12px; padding:10px 12px; background:rgba(10,18,42,.55); }
-    summary{ cursor:pointer; color:var(--txt); font-weight:800; }
-    .note{ font-size:12px; color:var(--muted); margin-top:8px; line-height:1.45; }
-    pre{ margin:10px 0 0; padding:12px; background:#07102a; border:1px solid var(--line); border-radius:12px; overflow:auto; color:#dfe6ff; font-size:12px; }
-    @media (max-width:900px){ .col-3,.col-4,.col-6{ grid-column:span 12; } }
+    :root {
+      --bg: #0b1020;
+      --card: #111a33;
+      --txt: #e8ecff;
+      --muted: #aab3d6;
+      --line: #22305a;
+      --ok: #29d391;
+    }
+
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial;
+      background: linear-gradient(180deg, #060914, #0b1020);
+      color: var(--txt);
+    }
+
+    .wrap {
+      max-width: 1100px;
+      margin: 24px auto;
+      padding: 0 14px;
+    }
+
+    .card {
+      background: rgba(17, 26, 51, .88);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 16px;
+      box-shadow: 0 10px 28px rgba(0, 0, 0, .35);
+    }
+
+    h1 {
+      margin: 0 0 6px;
+      font-size: 18px;
+      font-weight: 800;
+    }
+
+    .sub {
+      color: var(--muted);
+      font-size: 13px;
+      margin: 0 0 14px;
+      line-height: 1.4;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 12px;
+    }
+
+    label {
+      display: block;
+      font-size: 12px;
+      color: var(--muted);
+      margin: 0 0 6px;
+    }
+
+    input,
+    select {
+      width: 100%;
+      padding: 10px 10px;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      background: #0b1430;
+      color: var(--txt);
+      font-size: 14px;
+    }
+
+    .col-3 {
+      grid-column: span 3;
+    }
+
+    .col-4 {
+      grid-column: span 4;
+    }
+
+    .col-6 {
+      grid-column: span 6;
+    }
+
+    .col-12 {
+      grid-column: span 12;
+    }
+
+    .btn {
+      cursor: pointer;
+      border: 1px solid var(--line);
+      background: #0f1a3a;
+      color: var(--txt);
+      padding: 10px 12px;
+      border-radius: 10px;
+      font-weight: 700;
+    }
+
+    .btn:hover {
+      filter: brightness(1.08);
+    }
+
+    .pill {
+      display: inline-block;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .out {
+      background: #0b1430;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px;
+    }
+
+    .kpi {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .kpi>div {
+      flex: 1 1 240px;
+      background: #0a122a;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px;
+    }
+
+    .kpi .v {
+      font-size: 20px;
+      font-weight: 900;
+      margin-top: 4px;
+    }
+
+    .ok {
+      color: var(--ok);
+    }
+
+    details {
+      border: 1px dashed var(--line);
+      border-radius: 12px;
+      padding: 10px 12px;
+      background: rgba(10, 18, 42, .55);
+    }
+
+    summary {
+      cursor: pointer;
+      color: var(--txt);
+      font-weight: 800;
+    }
+
+    .note {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 8px;
+      line-height: 1.45;
+    }
+
+    pre {
+      margin: 10px 0 0;
+      padding: 12px;
+      background: #07102a;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      overflow: auto;
+      color: #dfe6ff;
+      font-size: 12px;
+    }
+
+    @media (max-width:900px) {
+
+      .col-3,
+      .col-4,
+      .col-6 {
+        grid-column: span 12;
+      }
+    }
   </style>
 </head>
+
 <body>
   <div class="wrap">
     <div class="card">
       <h1>Υπολογιστής Ρεύματος (Εκκαθαριστικός – όσο πιο σωστά γίνεται)</h1>
       <p class="sub">
         Βάζεις <span class="pill">kWh</span> και <span class="pill">ημέρες</span> και υπολογίζει:
-        Προμήθεια (2 κλίμακες) + ΑΔΜΗΕ + ΔΕΔΔΗΕ (σταθερό/μεταβλητό) + ΥΚΩ (3 κλίμακες) + ΕΤΜΕΑΡ + φόρους (προαιρετικά) + ΦΠΑ 6%,
+        Προμήθεια (2 κλίμακες) + ΑΔΜΗΕ + ΔΕΔΔΗΕ (σταθερό/μεταβλητό) + ΥΚΩ (3 κλίμακες) + ΕΤΜΕΑΡ + φόρους (προαιρετικά) +
+        ΦΠΑ 6%,
         και προαιρετικά Δήμο/ΕΡΤ (με 32/365 κ.λπ.).
       </p>
 
@@ -102,7 +269,8 @@
               </div>
               <div class="col-8">
                 <div class="note">
-                  Το όριο 1ης κλίμακας αναγάγεται με βάση τις ημέρες: (όριο30 × days/30) και στρογγυλοποιείται σε ακέραιες kWh,
+                  Το όριο 1ης κλίμακας αναγάγεται με βάση τις ημέρες: (όριο30 × days/30) και στρογγυλοποιείται σε
+                  ακέραιες kWh,
                   ώστε να προκύπτει π.χ. ~323 kWh στις 32 ημέρες (όταν το όριο30 είναι ~303).
                 </div>
               </div>
@@ -146,9 +314,10 @@
 
               <div class="col-12">
                 <div class="note">
-                  ΥΚΩ αναγωγή ημέρων σε “τετράμηνο” (120 ημέρες):<br/>
-                  Όριο1 = 1600 × days/120, Όριο2 = 400 × days/120.  
-                  Για να ταιριάξει με το παράδειγμά σου, εφαρμόζεται: round(Όριο1), floor(Όριο2) και το υπόλοιπο πάει στην 3η κλίμακα.
+                  ΥΚΩ αναγωγή ημέρων σε “τετράμηνο” (120 ημέρες):<br />
+                  Όριο1 = 1600 × days/120, Όριο2 = 400 × days/120.
+                  Για να ταιριάξει με το παράδειγμά σου, εφαρμόζεται: round(Όριο1), floor(Όριο2) και το υπόλοιπο πάει
+                  στην 3η κλίμακα.
                 </div>
               </div>
             </div>
@@ -174,7 +343,7 @@
 
               <div class="col-12">
                 <div class="note">
-                  ΦΠΑ υπολογίζεται πάνω στο “ρεύμα” (Προμήθεια + Ρυθμιζόμενες + φόροι ρεύματος/λοιπά που αφορούν ρεύμα).  
+                  ΦΠΑ υπολογίζεται πάνω στο “ρεύμα” (Προμήθεια + Ρυθμιζόμενες + φόροι ρεύματος/λοιπά που αφορούν ρεύμα).
                   Δήμος/ΕΡΤ είναι ξεχωριστά (δεν τα βάζω στο ΦΠΑ).
                 </div>
               </div>
@@ -222,10 +391,10 @@
 
               <div class="col-12">
                 <div class="note">
-                  Υπολογισμοί:<br/>
-                  ΔΤ = sqm × dtRate × days/365<br/>
-                  ΔΦ = sqm × dfRate × days/365<br/>
-                  ΤΑΠ = sqm × zonePrice × ageCoef × tapRate × days/365<br/>
+                  Υπολογισμοί:<br />
+                  ΔΤ = sqm × dtRate × days/365<br />
+                  ΔΦ = sqm × dfRate × days/365<br />
+                  ΤΑΠ = sqm × zonePrice × ageCoef × tapRate × days/365<br />
                   ΕΡΤ = ertAnnual × days/365 − ertAdvance
                 </div>
               </div>
@@ -237,192 +406,193 @@
     </div>
   </div>
 
-<script>
-(function(){
-  const $ = (id)=>document.getElementById(id);
+  <script>
+    (function () {
+      const $ = (id) => document.getElementById(id);
 
-  function num(x){ return Number(String(x).replace(",", ".")) || 0; }
-  function round2(x){ return Math.round((x + Number.EPSILON)*100)/100; }
-  function eur(x){
-    const v = round2(x);
-    return v.toLocaleString("el-GR", { style:"currency", currency:"EUR" });
-  }
+      function num(x) { return Number(String(x).replace(",", ".")) || 0; }
+      function round2(x) { return Math.round((x + Number.EPSILON) * 100) / 100; }
+      function eur(x) {
+        const v = round2(x);
+        return v.toLocaleString("el-GR", { style: "currency", currency: "EUR" });
+      }
 
-  function calc(){
-    const kwh = Math.max(0, Math.round(num($("kwh").value)));
-    const days = Math.max(1, Math.round(num($("days").value)));
-    const kva = Math.max(0, num($("kva").value));
+      function calc() {
+        const kwh = Math.max(0, Math.round(num($("kwh").value)));
+        const days = Math.max(1, Math.round(num($("days").value)));
+        const kva = Math.max(0, num($("kva").value));
 
-    const kwhPerDay = kwh / days;
+        const kwhPerDay = kwh / days;
 
-    // ====== Προμήθεια (2 κλίμακες) ======
-    const supplyFixed30 = num($("supplyFixed30").value);
-    const tier1Limit30  = num($("tier1Limit30").value);
-    const tier1Price    = num($("tier1Price").value);
-    const tier2Price    = num($("tier2Price").value);
+        // ====== Προμήθεια (2 κλίμακες) ======
+        const supplyFixed30 = num($("supplyFixed30").value);
+        const tier1Limit30 = num($("tier1Limit30").value);
+        const tier1Price = num($("tier1Price").value);
+        const tier2Price = num($("tier2Price").value);
 
-    const supplyFixed = supplyFixed30 * (days/30);
+        const supplyFixed = supplyFixed30 * (days / 30);
 
-    // Αναγωγή ορίου σε ημέρες και στρογγυλοποίηση σε ακέραιες kWh (όπως εμφανίζεται στους λογαριασμούς)
-    const tier1Limit = Math.round(tier1Limit30 * (days/30));
+        // Αναγωγή ορίου σε ημέρες και στρογγυλοποίηση σε ακέραιες kWh (όπως εμφανίζεται στους λογαριασμούς)
+        const tier1Limit = Math.round(tier1Limit30 * (days / 30));
 
-    const kwh1 = Math.min(kwh, tier1Limit);
-    const kwh2 = Math.max(0, kwh - kwh1);
+        const kwh1 = Math.min(kwh, tier1Limit);
+        const kwh2 = Math.max(0, kwh - kwh1);
 
-    const energyCharge = (kwh1 * tier1Price) + (kwh2 * tier2Price);
-    const supplyTotal = supplyFixed + energyCharge;
+        const energyCharge = (kwh1 * tier1Price) + (kwh2 * tier2Price);
+        const supplyTotal = supplyFixed + energyCharge;
 
-    // ====== Ρυθμιζόμενες ======
-    const admie = num($("admie").value);
-    const deddieVar = num($("deddieVar").value);
-    const deddieFixedPerYear = num($("deddieFixedPerYear").value);
-    const etmear = num($("etmear").value);
+        // ====== Ρυθμιζόμενες ======
+        const admie = num($("admie").value);
+        const deddieVar = num($("deddieVar").value);
+        const deddieFixedPerYear = num($("deddieFixedPerYear").value);
+        const etmear = num($("etmear").value);
 
-    const admieCharge = kwh * admie;
+        const admieCharge = kwh * admie;
 
-    // ΔΕΔΔΗΕ: (kVA × days/365 × €/kVA/έτος) + (kWh × €/kWh)
-    const deddieFixed = kva * (days/365) * deddieFixedPerYear;
-    const deddieCharge = deddieFixed + (kwh * deddieVar);
+        // ΔΕΔΔΗΕ: (kVA × days/365 × €/kVA/έτος) + (kWh × €/kWh)
+        const deddieFixed = kva * (days / 365) * deddieFixedPerYear;
+        const deddieCharge = deddieFixed + (kwh * deddieVar);
 
-    // ΥΚΩ 3 κλίμακες (αναγωγή τετραμήνου 120 ημέρες)
-    const yko1 = num($("yko1").value);
-    const yko2 = num($("yko2").value);
-    const yko3 = num($("yko3").value);
+        // ΥΚΩ 3 κλίμακες (αναγωγή τετραμήνου 120 ημέρες)
+        const yko1 = num($("yko1").value);
+        const yko2 = num($("yko2").value);
+        const yko3 = num($("yko3").value);
 
-    const yko1Limit = Math.round(1600 * (days/120)); // π.χ. 32ημ -> 427
-    const yko2Limit = Math.floor( 400 * (days/120)); // π.χ. 32ημ -> 106
+        const yko1Limit = Math.round(1600 * (days / 120)); // π.χ. 32ημ -> 427
+        const yko2Limit = Math.floor(400 * (days / 120)); // π.χ. 32ημ -> 106
 
-    const y1k = Math.min(kwh, yko1Limit);
-    const y2k = Math.min(Math.max(0, kwh - y1k), yko2Limit);
-    const y3k = Math.max(0, kwh - y1k - y2k);
+        const y1k = Math.min(kwh, yko1Limit);
+        const y2k = Math.min(Math.max(0, kwh - y1k), yko2Limit);
+        const y3k = Math.max(0, kwh - y1k - y2k);
 
-    const ykoCharge = (y1k*yko1) + (y2k*yko2) + (y3k*yko3);
+        const ykoCharge = (y1k * yko1) + (y2k * yko2) + (y3k * yko3);
 
-    const etmearCharge = kwh * etmear;
+        const etmearCharge = kwh * etmear;
 
-    const regulatedTotal = admieCharge + deddieCharge + ykoCharge + etmearCharge;
+        const regulatedTotal = admieCharge + deddieCharge + ykoCharge + etmearCharge;
 
-    // ====== Φόροι (προαιρετικά) + ΦΠΑ ======
-    const efk = num($("efk").value);
-    const eidtel = num($("eidtel").value);
-    const vatRate = num($("vatRate").value);
+        // ====== Φόροι (προαιρετικά) + ΦΠΑ ======
+        const efk = num($("efk").value);
+        const eidtel = num($("eidtel").value);
+        const vatRate = num($("vatRate").value);
 
-    const taxes = kwh * (efk + eidtel);
+        const taxes = kwh * (efk + eidtel);
 
-    // Βάση ΦΠΑ “ρεύματος” (χωρίς Δήμο/ΕΡΤ)
-    const vatBase = supplyTotal + regulatedTotal + taxes;
-    const vat = vatBase * vatRate;
+        // Βάση ΦΠΑ “ρεύματος” (χωρίς Δήμο/ΕΡΤ)
+        const vatBase = supplyTotal + regulatedTotal + taxes;
+        const vat = vatBase * vatRate;
 
-    // ====== Δήμος/ΤΑΠ/ΕΡΤ (ξεχωριστά) ======
-    const sqm = Math.max(0, num($("sqm").value));
-    const dtRate = num($("dtRate").value);
-    const dfRate = num($("dfRate").value);
-    const zonePrice = num($("zonePrice").value);
-    const ageCoef = num($("ageCoef").value);
-    const tapRate = num($("tapRate").value);
-    const ertAnnual = num($("ertAnnual").value);
-    const ertAdvance = num($("ertAdvance").value);
+        // ====== Δήμος/ΤΑΠ/ΕΡΤ (ξεχωριστά) ======
+        const sqm = Math.max(0, num($("sqm").value));
+        const dtRate = num($("dtRate").value);
+        const dfRate = num($("dfRate").value);
+        const zonePrice = num($("zonePrice").value);
+        const ageCoef = num($("ageCoef").value);
+        const tapRate = num($("tapRate").value);
+        const ertAnnual = num($("ertAnnual").value);
+        const ertAdvance = num($("ertAdvance").value);
 
-    const dt = sqm * dtRate * (days/365);
-    const df = sqm * dfRate * (days/365);
-    const tap = sqm * zonePrice * ageCoef * tapRate * (days/365);
-    const ert = (ertAnnual * (days/365)) - ertAdvance;
+        const dt = sqm * dtRate * (days / 365);
+        const df = sqm * dfRate * (days / 365);
+        const tap = sqm * zonePrice * ageCoef * tapRate * (days / 365);
+        const ert = (ertAnnual * (days / 365)) - ertAdvance;
 
-    const municipalTotal = dt + df + tap + ert;
+        const municipalTotal = dt + df + tap + ert;
 
-    // ====== Σύνολο ======
-    const total = vatBase + vat + municipalTotal;
+        // ====== Σύνολο ======
+        const total = vatBase + vat + municipalTotal;
 
-    const eff = kwh > 0 ? total / kwh : 0;
+        const eff = kwh > 0 ? total / kwh : 0;
 
-    // ====== Output ======
-    $("total").textContent = eur(total);
-    $("eff").textContent = (eff || 0).toFixed(3) + " €/kWh";
-    $("kwhPerDay").textContent = kwhPerDay.toFixed(2);
+        // ====== Output ======
+        $("total").textContent = eur(total);
+        $("eff").textContent = (eff || 0).toFixed(3) + " €/kWh";
+        $("kwhPerDay").textContent = kwhPerDay.toFixed(2);
 
-    $("headline").textContent =
-      `Υπολογισμός για ${kwh} kWh σε ${days} ημέρες (kWh/ημέρα: ${kwhPerDay.toFixed(2)}).`;
+        $("headline").textContent =
+          `Υπολογισμός για ${kwh} kWh σε ${days} ημέρες (kWh/ημέρα: ${kwhPerDay.toFixed(2)}).`;
 
-    const lines = [];
-    lines.push("=== ΠΡΟΜΗΘΕΙΑ (ΔΕΗ) ===");
-    lines.push(`Πάγιο: ${eur(supplyFixed)}  (πάγιο30=${supplyFixed30} × ${days}/30)`);
-    lines.push(`Ενέργεια: kWh1=${kwh1} × ${tier1Price} + kWh2=${kwh2} × ${tier2Price} = ${eur(energyCharge)}`);
-    lines.push(`Σύνολο Προμήθειας: ${eur(supplyTotal)}`);
-    lines.push("");
+        const lines = [];
+        lines.push("=== ΠΡΟΜΗΘΕΙΑ (ΔΕΗ) ===");
+        lines.push(`Πάγιο: ${eur(supplyFixed)}  (πάγιο30=${supplyFixed30} × ${days}/30)`);
+        lines.push(`Ενέργεια: kWh1=${kwh1} × ${tier1Price} + kWh2=${kwh2} × ${tier2Price} = ${eur(energyCharge)}`);
+        lines.push(`Σύνολο Προμήθειας: ${eur(supplyTotal)}`);
+        lines.push("");
 
-    lines.push("=== ΡΥΘΜΙΖΟΜΕΝΕΣ ===");
-    lines.push(`ΑΔΜΗΕ: ${kwh} × ${admie} = ${eur(admieCharge)}`);
-    lines.push(`ΔΕΔΔΗΕ: (kVA ${kva} × ${days}/365 × ${deddieFixedPerYear}) + (${kwh} × ${deddieVar}) = ${eur(deddieCharge)}`);
-    lines.push(`  - σταθερό ΔΕΔΔΗΕ: ${eur(deddieFixed)}`);
-    lines.push(`  - μεταβλητό ΔΕΔΔΗΕ: ${eur(kwh * deddieVar)}`);
-    lines.push(`ΥΚΩ: k1=${y1k}×${yko1} + k2=${y2k}×${yko2} + k3=${y3k}×${yko3} = ${eur(ykoCharge)}`);
-    lines.push(`  - όριο1(1600/4μηνο): round(1600×${days}/120)=${yko1Limit} kWh`);
-    lines.push(`  - όριο2(400/4μηνο): floor(400×${days}/120)=${yko2Limit} kWh`);
-    lines.push(`ΕΤΜΕΑΡ: ${kwh} × ${etmear} = ${eur(etmearCharge)}`);
-    lines.push(`Σύνολο Ρυθμιζόμενων: ${eur(regulatedTotal)}`);
-    lines.push("");
+        lines.push("=== ΡΥΘΜΙΖΟΜΕΝΕΣ ===");
+        lines.push(`ΑΔΜΗΕ: ${kwh} × ${admie} = ${eur(admieCharge)}`);
+        lines.push(`ΔΕΔΔΗΕ: (kVA ${kva} × ${days}/365 × ${deddieFixedPerYear}) + (${kwh} × ${deddieVar}) = ${eur(deddieCharge)}`);
+        lines.push(`  - σταθερό ΔΕΔΔΗΕ: ${eur(deddieFixed)}`);
+        lines.push(`  - μεταβλητό ΔΕΔΔΗΕ: ${eur(kwh * deddieVar)}`);
+        lines.push(`ΥΚΩ: k1=${y1k}×${yko1} + k2=${y2k}×${yko2} + k3=${y3k}×${yko3} = ${eur(ykoCharge)}`);
+        lines.push(`  - όριο1(1600/4μηνο): round(1600×${days}/120)=${yko1Limit} kWh`);
+        lines.push(`  - όριο2(400/4μηνο): floor(400×${days}/120)=${yko2Limit} kWh`);
+        lines.push(`ΕΤΜΕΑΡ: ${kwh} × ${etmear} = ${eur(etmearCharge)}`);
+        lines.push(`Σύνολο Ρυθμιζόμενων: ${eur(regulatedTotal)}`);
+        lines.push("");
 
-    lines.push("=== ΦΟΡΟΙ & ΦΠΑ ===");
-    lines.push(`Φόροι (ΕΦΚ+Ειδ.Τέλος): ${kwh} × (${efk}+${eidtel}) = ${eur(taxes)}`);
-    lines.push(`Βάση ΦΠΑ ρεύματος: ${eur(vatBase)}`);
-    lines.push(`ΦΠΑ ρεύματος: ${eur(vat)}  (${(vatRate*100).toFixed(0)}%)`);
-    lines.push("");
+        lines.push("=== ΦΟΡΟΙ & ΦΠΑ ===");
+        lines.push(`Φόροι (ΕΦΚ+Ειδ.Τέλος): ${kwh} × (${efk}+${eidtel}) = ${eur(taxes)}`);
+        lines.push(`Βάση ΦΠΑ ρεύματος: ${eur(vatBase)}`);
+        lines.push(`ΦΠΑ ρεύματος: ${eur(vat)}  (${(vatRate * 100).toFixed(0)}%)`);
+        lines.push("");
 
-    lines.push("=== ΔΗΜΟΣ / ΤΑΠ / ΕΡΤ (ξεχωριστά) ===");
-    lines.push(`ΔΤ: ${sqm}×${dtRate}×${days}/365 = ${eur(dt)}`);
-    lines.push(`ΔΦ: ${sqm}×${dfRate}×${days}/365 = ${eur(df)}`);
-    lines.push(`ΤΑΠ: ${sqm}×${zonePrice}×${ageCoef}×${tapRate}×${days}/365 = ${eur(tap)}`);
-    lines.push(`ΕΡΤ: ${ertAnnual}×${days}/365 − ${ertAdvance} = ${eur(ert)}`);
-    lines.push(`Σύνολο Δήμου/ΕΡΤ: ${eur(municipalTotal)}`);
-    lines.push("");
+        lines.push("=== ΔΗΜΟΣ / ΤΑΠ / ΕΡΤ (ξεχωριστά) ===");
+        lines.push(`ΔΤ: ${sqm}×${dtRate}×${days}/365 = ${eur(dt)}`);
+        lines.push(`ΔΦ: ${sqm}×${dfRate}×${days}/365 = ${eur(df)}`);
+        lines.push(`ΤΑΠ: ${sqm}×${zonePrice}×${ageCoef}×${tapRate}×${days}/365 = ${eur(tap)}`);
+        lines.push(`ΕΡΤ: ${ertAnnual}×${days}/365 − ${ertAdvance} = ${eur(ert)}`);
+        lines.push(`Σύνολο Δήμου/ΕΡΤ: ${eur(municipalTotal)}`);
+        lines.push("");
 
-    lines.push("=== ΤΕΛΙΚΟ ===");
-    lines.push(`Τελικό ποσό: ${eur(total)}`);
-    lines.push(`Effective all-in €/kWh: ${(eff||0).toFixed(5)}`);
+        lines.push("=== ΤΕΛΙΚΟ ===");
+        lines.push(`Τελικό ποσό: ${eur(total)}`);
+        lines.push(`Effective all-in €/kWh: ${(eff || 0).toFixed(5)}`);
 
-    $("breakdown").textContent = lines.join("\n");
-  }
+        $("breakdown").textContent = lines.join("\n");
+      }
 
-  $("calcBtn").addEventListener("click", calc);
+      $("calcBtn").addEventListener("click", calc);
 
-  $("resetBtn").addEventListener("click", ()=>{
-    $("kwh").value = "575";
-    $("days").value = "32";
-    $("kva").value = "8";
+      $("resetBtn").addEventListener("click", () => {
+        $("kwh").value = "575";
+        $("days").value = "32";
+        $("kva").value = "8";
 
-    $("supplyFixed30").value = "5.00";
-    $("tier1Limit30").value  = "303";
-    $("tier1Price").value    = "0.15308";
-    $("tier2Price").value    = "0.15926";
+        $("supplyFixed30").value = "5.00";
+        $("tier1Limit30").value = "303";
+        $("tier1Price").value = "0.15308";
+        $("tier2Price").value = "0.15926";
 
-    $("admie").value = "0.00999";
-    $("deddieVar").value = "0.00339";
-    $("deddieFixedPerYear").value = "6.210";
-    $("etmear").value = "0.01700";
+        $("admie").value = "0.00999";
+        $("deddieVar").value = "0.00339";
+        $("deddieFixedPerYear").value = "6.210";
+        $("etmear").value = "0.01700";
 
-    $("yko1").value = "0.00690";
-    $("yko2").value = "0.05000";
-    $("yko3").value = "0.08500";
+        $("yko1").value = "0.00690";
+        $("yko2").value = "0.05000";
+        $("yko3").value = "0.08500";
 
-    $("efk").value = "0.00220870";
-    $("eidtel").value = "0.00104348";
-    $("vatRate").value = "0.06";
+        $("efk").value = "0.00220870";
+        $("eidtel").value = "0.00104348";
+        $("vatRate").value = "0.06";
 
-    $("sqm").value = "30";
-    $("dtRate").value = "1.05";
-    $("dfRate").value = "0.14";
-    $("zonePrice").value = "1300";
-    $("ageCoef").value = "0.70";
-    $("tapRate").value = "0.00035";
-    $("ertAnnual").value = "36.00";
-    $("ertAdvance").value = "0.00";
+        $("sqm").value = "30";
+        $("dtRate").value = "1.05";
+        $("dfRate").value = "0.14";
+        $("zonePrice").value = "1300";
+        $("ageCoef").value = "0.70";
+        $("tapRate").value = "0.00035";
+        $("ertAnnual").value = "36.00";
+        $("ertAdvance").value = "0.00";
 
-    calc();
-  });
+        calc();
+      });
 
-  // initial
-  calc();
-})();
-</script>
+      // initial
+      calc();
+    })();
+  </script>
 </body>
+
 </html>
